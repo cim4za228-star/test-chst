@@ -1,63 +1,19 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NeonChat</title>
-<style>
-:root { --bg:#0f172a; --side:#1e293b; --chat:#0b1120; --out:linear-gradient(135deg,#6366f1,#8b5cf6); --in:#1e293b; --txt:#f8fafc; --mut:#94a3b8; --acc:#8b5cf6; --brd:#334155; }
-body.light { --bg:#f1f5f9; --side:#fff; --chat:#e2e8f0; --out:linear-gradient(135deg,#3b82f6,#2563eb); --in:#fff; --txt:#0f172a; --mut:#64748b; --acc:#3b82f6; --brd:#cbd5e1; }
-* { box-sizing:border-box; margin:0; padding:0; font-family:system-ui,sans-serif; }
-body { background:var(--bg); color:var(--txt); height:100vh; display:flex; justify-content:center; align-items:center; }
-.app { width:95%; max-width:960px; height:90vh; background:var(--side); border-radius:20px; display:flex; overflow:hidden; border:1px solid var(--brd); position:relative; }
-.sidebar { width:270px; border-right:1px solid var(--brd); display:flex; flex-direction:column; }
-.s-head { padding:16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--brd); }
-.logo { font-size:1.1rem; font-weight:800; color:var(--acc); }
-.sq-btn { background:none; border:1px solid var(--brd); color:var(--txt); width:30px; height:30px; border-radius:8px; cursor:pointer; }
-.plus-btn { background:var(--out); color:#fff; border:none; font-weight:bold; }
-.c-list { flex:1; overflow-y:auto; padding:8px; }
-.c-item { display:flex; align-items:center; padding:10px; border-radius:12px; cursor:pointer; margin-bottom:4px; }
-.c-item.active { background:rgba(139,92,246,.2); border:1px solid var(--acc); }
-.ava { width:40px; height:40px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:1.3rem; margin-right:10px; background:var(--chat); flex-shrink:0; }
-.c-prev { font-size:.8rem; color:var(--mut); max-width:155px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.main { flex:1; display:flex; flex-direction:column; background:var(--chat); }
-.m-head { padding:14px 20px; background:var(--side); border-bottom:1px solid var(--brd); display:flex; justify-content:space-between; align-items:center; }
-.d-btn { background:none; border:1px solid #ef4444; color:#ef4444; padding:4px 10px; border-radius:8px; cursor:pointer; font-size:.8rem; }
-.msgs { flex:1; padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; }
-.msg { max-width:72%; padding:10px 14px; border-radius:16px; font-size:.95rem; word-wrap:break-word; }
-.msg.out { align-self:flex-end; background:var(--out); color:#fff; }
-.msg.in { align-self:flex-start; background:var(--in); border:1px solid var(--brd); }
-.time { font-size:.65rem; opacity:.7; margin-top:4px; text-align:right; }
-.inp-box { padding:12px; background:var(--side); border-top:1px solid var(--brd); display:flex; gap:8px; position:relative; }
-.emojis { position:absolute; bottom:62px; left:12px; background:var(--side); border:1px solid var(--brd); padding:8px; border-radius:12px; display:none; gap:6px; flex-wrap:wrap; width:210px; }
-.emojis.show { display:flex; }
-.em { font-size:1.3rem; cursor:pointer; }
-#msgIn { flex:1; padding:10px 14px; border-radius:20px; border:1px solid var(--brd); background:var(--chat); color:var(--txt); outline:none; }
-.send { background:var(--out); color:#fff; border:none; padding:10px 16px; border-radius:20px; cursor:pointer; }
-.modal { position:absolute; inset:0; background:rgba(0,0,0,.7); display:none; justify-content:center; align-items:center; z-index:99; }
-.modal.show { display:flex; }
-.m-box { background:var(--side); border:1px solid var(--brd); padding:20px; border-radius:16px; width:320px; }
-.m-inp { width:100%; padding:8px; border-radius:8px; border:1px solid var(--brd); background:var(--chat); color:var(--txt); margin:8px 0 12px; outline:none; }
-.avas { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 12px; }
-.av-opt { width:34px; height:34px; border-radius:8px; background:var(--chat); display:flex; align-items:center; justify-content:center; cursor:pointer; border:2px solid transparent; }
-.av-opt.sel { border-color:var(--acc); }
-</style>
-</head>
-<body>
-<div id="app"></div>
 <script>
 const $ = id => document.getElementById(id);
 $('app').outerHTML = `<div class="app"><div class="sidebar"><div class="s-head"><div class="logo">⚡ NeonChat</div><div style="display:flex;gap:4px"><button class="sq-btn plus-btn" id="openM">+</button><button class="sq-btn" id="openP">🎭</button><button class="sq-btn" id="openOn">🌐</button><button class="sq-btn" id="themeBtn">🌓</button></div></div><div id="pBar" style="padding:8px 14px;font-size:.78rem;background:rgba(139,92,246,.15);border-bottom:1px solid var(--brd);cursor:pointer">🎭 Роль: <b id="pName">Ты</b></div><div class="c-list" id="cList"></div></div><div class="main"><div class="m-head"><div style="display:flex;align-items:center"><div class="ava" id="hAva">🤖</div><div><b id="hName">Бот</b><div style="font-size:.75rem;color:#10b981" id="hStat">● в сети</div></div></div><div><button class="d-btn" id="clrBtn">Очистить</button> <button class="d-btn" id="delBtn" style="display:none">Удалить</button></div></div><div class="msgs" id="msgs"></div><div class="inp-box"><div class="emojis" id="emBox"></div><button class="sq-btn" style="border:none" id="emBtn">😊</button><input id="msgIn" placeholder="Сообщение..."><button class="send" id="sendBtn">➤</button></div></div><div class="modal" id="modal"><div class="m-box"><h3>✨ Новый чат</h3><input class="m-inp" id="newName" placeholder="Имя бота или название"><div class="avas" id="avGrid"></div><label style="font-size:.85rem"><input type="checkbox" id="botChk" checked> Бот отвечает</label><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="sq-btn" style="width:auto;padding:0 12px" id="closeM">Отмена</button><button class="send" id="addBtn">Создать</button></div></div></div><div class="modal" id="pModal"><div class="m-box"><h3>🎭 Твоя Персона</h3><input class="m-inp" id="pInName" placeholder="Имя персонажа"><textarea class="m-inp" id="pInDesc" rows="3" placeholder="Описание характера..."></textarea><div style="display:flex;justify-content:space-between;margin-top:10px"><button class="d-btn" id="resetP">Сбросить</button><div style="display:flex;gap:8px"><button class="sq-btn" style="width:auto;padding:0 12px" id="closeP">Отмена</button><button class="send" id="saveP">Сохранить</button></div></div></div></div></div>`;
 const srv = 'https://' + 'ntfy.sh/';
+const myUid = localStorage.getItem('nc_uid') || ('u_' + Math.random().toString(36).slice(2));
+localStorage.setItem('nc_uid', myUid);
+
 const defC = [{id:'bot',name:'Кибер-Бот',ava:'🤖',bot:true,def:true},{id:'cat',name:'Кот Батон',ava:'🐱',bot:true,def:true},{id:'fav',name:'Избранное',ava:'📌',bot:false,def:true}];
 const avas = ['😎','👽','🦊','🚀','💎','🎮','👻','🧠','🔥','👑'];
 const ems = ['😂','🔥','❤️','👍','😎','🚀','🎉','🤔','👀','✨','💯','🐱'];
 const now = () => new Date().toTimeString().slice(0,5);
-let contacts = JSON.parse(localStorage.getItem('nc5_c')) || defC;
-let hist = JSON.parse(localStorage.getItem('nc5_h')) || {bot:[{t:'Привет! Нажми 🎭 слева, чтобы создать свою персону! 🚀',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]};
-let persona = JSON.parse(localStorage.getItem('nc5_p')) || {name:'',desc:''};
-let curId = contacts.at(0).id, selAva = avas.at(0), onlineTopic = '';
-const save = () => { localStorage.setItem('nc5_c',JSON.stringify(contacts)); localStorage.setItem('nc5_h',JSON.stringify(hist)); localStorage.setItem('nc5_p',JSON.stringify(persona)); };
+let contacts = JSON.parse(localStorage.getItem('nc6_c')) || defC;
+let hist = JSON.parse(localStorage.getItem('nc6_h')) || {bot:[{t:'Привет! Нажми 🎭 для персоны или 🌐 для чата с другом! 🚀',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]};
+let persona = JSON.parse(localStorage.getItem('nc6_p')) || {name:'',desc:''};
+let curId = contacts.at(0).id, selAva = avas.at(0), onlineTopic = '', seenIds = {}, pollTimer = null;
+const save = () => { localStorage.setItem('nc6_c',JSON.stringify(contacts)); localStorage.setItem('nc6_h',JSON.stringify(hist)); localStorage.setItem('nc6_p',JSON.stringify(persona)); };
 const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
 
 function updP(){ $('pName').textContent = persona.name ? persona.name + (persona.desc ? ' ('+persona.desc.slice(0,15)+'...)' : '') : 'Ты (без роли)'; }
@@ -80,7 +36,10 @@ function send(){
   const t = $('msgIn').value.trim(); if(!t) return;
   const role = persona.name || '';
   (hist[curId]=hist[curId]||[]).push({t,type:'out',time:now(),role}); $('msgIn').value=''; save(); renderMsgs(); renderList();
-  if(curId==='online' && onlineTopic){ fetch(srv+encodeURIComponent(onlineTopic),{method:'POST',body:JSON.stringify({s:role||'Друг',t})}); return; }
+  if(curId==='online' && onlineTopic){
+    fetch(srv+encodeURIComponent(onlineTopic),{method:'POST',body:JSON.stringify({u:myUid,s:role||'Друг',t})}).catch(()=>{ $('hStat').textContent='⚠ ошибка сети'; });
+    return;
+  }
   const c = contacts.find(x=>x.id===curId);
   if(c && c.bot){
     $('hStat').textContent = 'печатает...';
@@ -92,6 +51,26 @@ function send(){
   }
 }
 
+async function pollOnline(){
+  if(!onlineTopic) return;
+  try {
+    const res = await fetch(srv+encodeURIComponent(onlineTopic)+'/json?poll=1&since=10m');
+    const txt = await res.text();
+    let added = false;
+    txt.trim().split('\n').forEach(line => {
+      if(!line) return;
+      const d = JSON.parse(line);
+      if(d.event==='message' && !seenIds[d.id]){
+        seenIds[d.id] = true;
+        const m = JSON.parse(d.message);
+        if(m.u !== myUid){ hist['online'].push({t:m.t,role:m.s,type:'in',time:now()}); added = true; }
+      }
+    });
+    if(added){ save(); renderMsgs(); renderList(); }
+    if(curId==='online') $('hStat').textContent = '● онлайн (на связи)';
+  } catch(e){ if(curId==='online') $('hStat').textContent = '⚠ нет связи с сервером'; }
+}
+
 $('openP').onclick = $('pBar').onclick = () => { $('pInName').value=persona.name; $('pInDesc').value=persona.desc; $('pModal').classList.add('show'); };
 $('closeP').onclick = () => $('pModal').classList.remove('show');
 $('saveP').onclick = () => { persona={name:$('pInName').value.trim(),desc:$('pInDesc').value.trim()}; save(); updP(); $('pModal').classList.remove('show'); };
@@ -99,12 +78,14 @@ $('resetP').onclick = () => { persona={name:'',desc:''}; save(); updP(); $('pMod
 
 $('openOn').onclick = () => {
   const room = prompt('Введи секретный код комнаты (одинаковый с другом):'); if(!room) return;
-  onlineTopic = 'neonchat_' + room.trim();
+  onlineTopic = 'neonchat_v2_' + room.trim().toLowerCase();
+  seenIds = {};
   contacts = contacts.filter(x=>x.id!=='online');
   contacts.unshift({id:'online',name:'🌐 '+room,ava:'🔥',bot:false,def:true});
   hist['online'] = hist['online'] || []; sw('online');
-  const es = new EventSource(srv+encodeURIComponent(onlineTopic)+'/sse');
-  es.onmessage = e => { try { const d=JSON.parse(e.data); if(d.event==='message'){ const m=JSON.parse(d.message); if(m.s!==(persona.name||'Друг')){ hist['online'].push({t:m.t,role:m.s,type:'in',time:now()}); save(); renderMsgs(); renderList(); } } } catch(x){} };
+  if(pollTimer) clearInterval(pollTimer);
+  pollOnline();
+  pollTimer = setInterval(pollOnline, 1500);
 };
 
 $('avGrid').innerHTML = avas.map((a,i)=>`<div class="av-opt ${i===0?'sel':''}" onclick="pickA(this,'${a}')">${a}</div>`).join('');
