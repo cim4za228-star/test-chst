@@ -86,7 +86,7 @@ function pingRoom(c){if(!c||!c.room||!mq||!onlineOk||!acc)return;(members[c.id]=
 setInterval(()=>{contacts.forEach(c=>{if(c.room)pingRoom(c)})},4000);
 function sendRead(c){if(c&&c.room&&mq&&onlineOk&&!document.hidden)mq.publish(c.room,JSON.stringify({u:myUid,un:acc?acc.name:'',ua:acc?acc.ava:'',act:'read'}))}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendRead(contacts.find(x=>x.id===curId))});
-function updMemUI(){const c=contacts.find(x=>x.id===curId);if(!c||!c.room){$('memBtn').style.display='none';return}$('memBtn').style.display='inline-block';const list=members[c.id]||{},active=Object.entries(list).filter(([k,v])=>Date.now()-v.ts<15000);$('memBtn').textContent='👥 '+Math.max(1,active.length);$('memList').innerHTML=active.length?active.map(([k,v])=>`<div class="mem-row"><span style="font-size:1.4rem">${v.a}</span><b>${esc(v.n)}</b>${k===myUid?' <span style="color:var(--acc);font-size:.75rem">(ты)</span>':''}</div>`).join(''):'<div style="color:var(--mut)">Пока никого нет</div>'}
+function updMemUI(){const c=contacts.find(x=>x.id===curId);if(!c||!c.room){$('memBtn').style.display='none';return}$('memBtn').style.display='inline-block';const list=members[c.id]||{},active=Object.entries(list);$('memBtn').textContent='👥 '+Math.max(1,active.length);$('memList').innerHTML=active.length?active.map(([k,v])=>`<div class="mem-row"><span style="font-size:1.4rem">${v.a}</span><b>${esc(v.n)}</b>${k===myUid?' <span style="color:var(--acc);font-size:.75rem">(ты)</span>':''}</div>`).join(''):'<div style="color:var(--mut)">Пока никого нет</div>'}
 $('memBtn').onclick=()=>{updMemUI();$('memModal').classList.add('show')};
 $('closeMem').onclick=()=>$('memModal').classList.remove('show');
 
