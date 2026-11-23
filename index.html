@@ -53,25 +53,25 @@ localStorage.setItem('nc_uid',myUid);
 const defC=[{id:'bot',name:'Кибер-Бот',ava:'🤖',bot:true,def:true},{id:'cat',name:'Кот Батон',ava:'🐱',bot:true,def:true},{id:'fav',name:'Избранное',ava:'📌',bot:false,def:true}];
 const avas=['😎','👽','🦊','🚀','💎','🎮','👻','🧠','🔥','👑'], ems=['😂','🔥','❤️','👍','😎','🚀','🎉','🤔','👀','✨','💯','🐱'];
 const now=()=>new Date().toTimeString().slice(0,5);
-let contacts=JSON.parse(localStorage.getItem('nc7_c'))||defC, hist=JSON.parse(localStorage.getItem('nc7_h'))||{bot:[{t:'Привет! Нажми 🎭 для персоны или 🌐 для чата с другом! 🚀',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]}, persona=JSON.parse(localStorage.getItem('nc7_p'))||{name:'',desc:''};
-let curId=contacts.at(0).id, selAva=avas.at(0), onlineTopic='', seenIds={}, pollTimer=null;
-const save=()=>{localStorage.setItem('nc7_c',JSON.stringify(contacts));localStorage.setItem('nc7_h',JSON.stringify(hist));localStorage.setItem('nc7_p',JSON.stringify(persona))};
+let contacts=JSON.parse(localStorage.getItem('nc8_c'))||defC, hist=JSON.parse(localStorage.getItem('nc8_h'))||{bot:[{t:'Привет! Нажми 🎭 для персоны или 🌐 для новой комнаты с другом! 🚀',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]}, persona=JSON.parse(localStorage.getItem('nc8_p'))||{name:'',desc:''};
+let curId=contacts.at(0).id, selAva=avas.at(0), seenIds=JSON.parse(localStorage.getItem('nc8_s')||'{}'), pollTimer=null;
+const save=()=>{localStorage.setItem('nc8_c',JSON.stringify(contacts));localStorage.setItem('nc8_h',JSON.stringify(hist));localStorage.setItem('nc8_p',JSON.stringify(persona));localStorage.setItem('nc8_s',JSON.stringify(seenIds))};
 const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
 
 function updP(){$('pName').textContent=persona.name?persona.name+(persona.desc?' ('+persona.desc.slice(0,15)+'...)':''):'Ты (без роли)'}
 function renderList(){$('cList').innerHTML=contacts.map(c=>{const m=hist[c.id]||[],last=m.length?esc(m.at(-1).t):'Нет сообщений';return`<div class="c-item ${c.id===curId?'active':''}" onclick="sw('${c.id}')"><div class="ava">${c.ava}</div><div><b>${esc(c.name)}</b><div class="c-prev">${last}</div></div></div>`}).join('')}
-window.sw=id=>{curId=id;const c=contacts.find(x=>x.id===id);if(!c)return;$('hName').textContent=c.name;$('hAva').textContent=c.ava;$('hStat').textContent=c.id==='online'?'● онлайн-комната':(c.bot?'● в сети':'● заметки');$('delBtn').style.display=c.def?'none':'inline-block';renderList();renderMsgs()};
+window.sw=id=>{curId=id;const c=contacts.find(x=>x.id===id);if(!c)return;$('hName').textContent=c.name;$('hAva').textContent=c.ava;$('hStat').textContent=c.room?'● онлайн-комната':(c.bot?'● в сети':'● заметки');$('delBtn').style.display=c.def?'none':'inline-block';renderList();renderMsgs();if(c.room)pollRoom(c)};
 function renderMsgs(){$('msgs').innerHTML=(hist[curId]||[]).map(m=>`<div class="msg ${m.type}">${m.role?`<div style="font-size:.7rem;opacity:.8;margin-bottom:3px">🎭 ${esc(m.role)}</div>`:''}${esc(m.t)}<div class="time">${m.time}</div></div>`).join('');$('msgs').scrollTop=$('msgs').scrollHeight}
 function send(){
-  const t=$('msgIn').value.trim();if(!t)return;const role=persona.name||'';
+  const t=$('msgIn').value.trim();if(!t)return;const role=persona.name||'', c=contacts.find(x=>x.id===curId);
   (hist[curId]=hist[curId]||[]).push({t,type:'out',time:now(),role});$('msgIn').value='';save();renderMsgs();renderList();
-  if(curId==='online'&&onlineTopic){fetch(srv+encodeURIComponent(onlineTopic),{method:'POST',body:JSON.stringify({u:myUid,s:role||'Друг',t})}).catch(()=>{$('hStat').textContent='⚠ ошибка сети'});return}
-  const c=contacts.find(x=>x.id===curId);
+  if(c&&c.room){fetch(srv+encodeURIComponent(c.room),{method:'POST',body:JSON.stringify({u:myUid,s:role||'Друг',t})}).catch(()=>{$('hStat').textContent='⚠ ошибка сети'});return}
   if(c&&c.bot){$('hStat').textContent='печатает...';setTimeout(()=>{const p=persona.name?persona.name+', ':'';const r=curId==='cat'?['Мяу! 🐾','Мур-мур...','Дай колбасы! 🌭'].at(Math.floor(Math.random()*3)):[`${p}звучит эпично! 🔥`,`${p}интересный поворот 👀`,`В твоём стиле! 💯`,`Продолжай, ${persona.name||'друг'}! ✨`].at(Math.floor(Math.random()*4));hist[curId].push({t:r,type:'in',time:now()});$('hStat').textContent='● в сети';save();renderMsgs();renderList()},700)}
 }
-async function pollOnline(){if(!onlineTopic)return;try{const res=await fetch(srv+encodeURIComponent(onlineTopic)+'/json?poll=1&since=10m'),txt=await res.text();let added=false;txt.trim().split('\n').forEach(l=>{if(!l)return;const d=JSON.parse(l);if(d.event==='message'&&!seenIds[d.id]){seenIds[d.id]=true;const m=JSON.parse(d.message);if(m.u!==myUid){hist['online'].push({t:m.t,role:m.s,type:'in',time:now()});added=true}}});if(added){save();renderMsgs();renderList()}if(curId==='online')$('hStat').textContent='● онлайн (на связи)'}catch(e){if(curId==='online')$('hStat').textContent='⚠ нет связи'}}
+async function pollRoom(c){if(!c||!c.room)return;try{const res=await fetch(srv+encodeURIComponent(c.room)+'/json?poll=1&since=10m'),txt=await res.text();let added=false;txt.trim().split('\n').forEach(l=>{if(!l)return;const d=JSON.parse(l);if(d.event==='message'&&!seenIds[d.id]){seenIds[d.id]=true;const m=JSON.parse(d.message);if(m.u!==myUid){(hist[c.id]=hist[c.id]||[]).push({t:m.t,role:m.s,type:'in',time:now()});added=true}}});if(added){save();if(curId===c.id)renderMsgs();renderList()}if(curId===c.id)$('hStat').textContent='● онлайн (на связи)'}catch(e){if(curId===c.id)$('hStat').textContent='⚠ нет связи'}}
+setInterval(()=>{const c=contacts.find(x=>x.id===curId);if(c&&c.room)pollRoom(c)},1500);
 $('openP').onclick=$('pBar').onclick=()=>{const n=prompt('Имя твоей Персоны (пусто = сброс):',persona.name);if(n===null)return;const d=n.trim()?prompt('Описание роли:',persona.desc):'';persona={name:n.trim(),desc:(d||'').trim()};save();updP()};
-$('openOn').onclick=()=>{const room=prompt('Код комнаты (одинаковый с другом):');if(!room)return;onlineTopic='neonchat_v2_'+room.trim().toLowerCase();seenIds={};contacts=contacts.filter(x=>x.id!=='online');contacts.unshift({id:'online',name:'🌐 '+room,ava:'🔥',bot:false,def:true});hist['online']=hist['online']||[];sw('online');if(pollTimer)clearInterval(pollTimer);pollOnline();pollTimer=setInterval(pollOnline,1500)};
+$('openOn').onclick=()=>{const r=prompt('Код новой комнаты (одинаковый с собеседником):');if(!r)return;const code=r.trim().toLowerCase(), id='rm_'+code;if(!contacts.find(x=>x.id===id))contacts.unshift({id,name:'🌐 '+r.trim(),ava:'🔥',room:'neonchat_v3_'+code,bot:false,def:false});hist[id]=hist[id]||[];save();sw(id)};
 $('avGrid').innerHTML=avas.map((a,i)=>`<div class="av-opt ${i===0?'sel':''}" onclick="pickA(this,'${a}')">${a}</div>`).join('');
 window.pickA=(el,a)=>{document.querySelectorAll('.av-opt').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');selAva=a};
 $('openM').onclick=()=>{$('newName').value='';$('modal').classList.add('show');$('newName').focus()};
@@ -87,3 +87,4 @@ updP();sw(curId);
 </script>
 </body>
 </html>
+
