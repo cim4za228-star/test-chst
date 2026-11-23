@@ -64,28 +64,29 @@ const defC=[{id:'bot',name:'Кибер-Бот',ava:'🤖',bot:true,def:true},{id
 const avas=['😎','👽','🦊','🚀','💎','🎮','👻','🧠','🔥','👑'], ems=['😂','🔥','❤️','👍','😎','🚀','🎉','🤔','👀','✨','💯','🐱'];
 const now=()=>new Date().toTimeString().slice(0,5);
 
-let db=JSON.parse(localStorage.getItem('neonchat_permanent'))||{acc:null,c:defC,h:{bot:[{t:'Переписка зашифрована ключом комнаты 🔒',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]},p:{name:'',desc:''},cur:'bot'};
-let acc=db.acc, contacts=db.c, hist=db.h, persona=db.p;
+let db=JSON.parse(localStorage.getItem('neonchat_permanent'))||{acc:null,c:defC,h:{bot:[{t:'Всё исправлено: шифрование, авто-связь, фото и участники! 🚀',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]},p:{name:'',desc:''},cur:'bot',mem:{}};
+let acc=db.acc, contacts=db.c, hist=db.h, persona=db.p; members=db.mem||{};
 let curId=contacts.find(x=>x.id===db.cur)?db.cur:contacts.at(0).id, selAva=avas.at(0), selAccAva=avas.at(0);
 
-const save=()=>{db={acc,c:contacts,h:hist,p:persona,cur:curId};try{localStorage.setItem('neonchat_permanent',JSON.stringify(db))}catch(e){Object.keys(hist).forEach(k=>{if(hist[k].length>15)hist[k]=hist[k].slice(-15)});try{localStorage.setItem('neonchat_permanent',JSON.stringify(db))}catch(x){}}};
+const save=()=>{db={acc,c:contacts,h:hist,p:persona,cur:curId,mem:members};try{localStorage.setItem('neonchat_permanent',JSON.stringify(db))}catch(e){Object.keys(hist).forEach(k=>{if(hist[k].length>15)hist[k]=hist[k].slice(-15)});try{localStorage.setItem('neonchat_permanent',JSON.stringify(db))}catch(x){}}};
 const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
-const crypt=(str,k)=>{if(!str)return'';const b=new TextEncoder().encode(str),kb=new TextEncoder().encode(k||'nc'),r=new Uint8Array(b.length);for(let i=0;i<b.length;i++)r[i]=b[i]^kb[i%kb.length];let s='';r.forEach(x=>s+=String.fromCharCode(x));return btoa(s)};
-const decrypt=(b64,k)=>{if(!b64)return'';try{const s=atob(b64),kb=new TextEncoder().encode(k||'nc'),r=new Uint8Array(s.length);for(let i=0;i<s.length;i++)r[i]=s.charCodeAt(i)^kb[i%kb.length];return new TextDecoder().decode(r)}catch(e){return''}};
+const crypt=(str,k)=>{if(!str)return'';const b=new TextEncoder().encode(str),kb=new TextEncoder().encode(k||'nc');let h='';for(let i=0;i<b.length;i++)h+=(b[i]^kb[i%kb.length]).toString(16).padStart(2,'0');return h};
+const decrypt=(hex,k)=>{if(!hex)return'';try{const kb=new TextEncoder().encode(k||'nc'),r=new Uint8Array(hex.length/2);for(let i=0;i<r.length;i++)r[i]=parseInt(hex.slice(i*2,i*2+2),16)^kb[i%kb.length];return new TextDecoder().decode(r)}catch(e){return''}};
 
 const sEl=document.createElement('script');
 sEl.src=['https:/','unpkg.com','mqtt','dist','mqtt.min.js'].join('/');
 sEl.onload=()=>{
-  mq=mqtt.connect('wss://'+'broker.emqx.io:8084/mqtt');
+  mq=mqtt.connect('wss://'+'broker.emqx.io:8084/mqtt',{reconnectPeriod:1000,keepalive:20});
   mq.on('connect',()=>{onlineOk=true;contacts.forEach(c=>{if(c.room){mq.subscribe(c.room);pingRoom(c)}});if(curId.startsWith('rm_')){$('hStat').textContent='🔒 шифрование активно';sendRead(contacts.find(x=>x.id===curId))}});
-  mq.on('message',(topic,payload)=>{try{const m=JSON.parse(payload.toString()),c=contacts.find(x=>x.room===topic);if(!c)return;if(m.u){(members[c.id]=members[c.id]||{})[m.u]={n:m.un||'Гость',a:m.ua||'👤',ts:Date.now()};updMemUI()}if(m.u===myUid||m.act==='ping')return;if(m.act==='read'){(hist[c.id]||[]).forEach(x=>{if(x.type==='out')x.rd=true});save();if(curId===c.id)renderMsgs();return}const k=c.id;if(m.cid){const b=chunks[m.cid]=chunks[m.cid]||{p:[],tot:m.tot};b.p[m.idx]=m.d;if(b.p.filter(Boolean).length===b.tot){delete chunks[m.cid];(hist[c.id]=hist[c.id]||[]).push({t:decrypt(m.t,k),img:decrypt(b.p.join(''),k),q:decrypt(m.q,k),role:m.s,type:'in',time:now()});save();if(curId===c.id){renderMsgs();sendRead(c)}renderList()}return}(hist[c.id]=hist[c.id]||[]).push({t:decrypt(m.t,k),img:decrypt(m.img,k),q:decrypt(m.q,k),role:m.s,type:'in',time:now()});save();if(curId===c.id){renderMsgs();sendRead(c)}renderList()}catch(e){}});
+  mq.on('offline',()=>{onlineOk=false;if(curId.startsWith('rm_'))$('hStat').textContent='⏳ переподключение...'});
+  mq.on('message',(topic,payload)=>{try{const m=JSON.parse(payload.toString()),c=contacts.find(x=>x.room===topic);if(!c)return;if(m.u){(members[c.id]=members[c.id]||{})[m.u]={n:m.un||'Гость',a:m.ua||'👤'};save();updMemUI()}if(m.u===myUid||m.act==='ping')return;if(m.act==='read'){(hist[c.id]||[]).forEach(x=>{if(x.type==='out')x.rd=true});save();if(curId===c.id)renderMsgs();return}const k=c.id;if(m.cid){const b=chunks[m.cid]=chunks[m.cid]||{p:[],tot:m.tot};b.p[m.idx]=m.d;if(b.p.filter(Boolean).length===b.tot){delete chunks[m.cid];(hist[c.id]=hist[c.id]||[]).push({t:decrypt(m.t,k),img:decrypt(b.p.join(''),k),q:decrypt(m.q,k),role:m.s,type:'in',time:now()});save();if(curId===c.id){renderMsgs();sendRead(c)}renderList()}return}(hist[c.id]=hist[c.id]||[]).push({t:decrypt(m.t,k),img:decrypt(m.img,k),q:decrypt(m.q,k),role:m.s,type:'in',time:now()});save();if(curId===c.id){renderMsgs();sendRead(c)}renderList()}catch(e){}});
 };
 document.head.appendChild(sEl);
 
-function pingRoom(c){if(!c||!c.room||!mq||!onlineOk||!acc)return;(members[c.id]=members[c.id]||{})[myUid]={n:acc.name,a:acc.ava,ts:Date.now()};mq.publish(c.room,JSON.stringify({u:myUid,un:acc.name,ua:acc.ava,act:'ping'}));updMemUI()}
-setInterval(()=>{contacts.forEach(c=>{if(c.room)pingRoom(c)})},4000);
+function pingRoom(c){if(!c||!c.room||!mq||!onlineOk||!acc)return;(members[c.id]=members[c.id]||{})[myUid]={n:acc.name,a:acc.ava};mq.publish(c.room,JSON.stringify({u:myUid,un:acc.name,ua:acc.ava,act:'ping'}));updMemUI()}
+setInterval(()=>{contacts.forEach(c=>{if(c.room)pingRoom(c)})},5000);
 function sendRead(c){if(c&&c.room&&mq&&onlineOk&&!document.hidden)mq.publish(c.room,JSON.stringify({u:myUid,un:acc?acc.name:'',ua:acc?acc.ava:'',act:'read'}))}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)sendRead(contacts.find(x=>x.id===curId))});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(mq){mq.reconnect();contacts.forEach(c=>{if(c.room){mq.subscribe(c.room);pingRoom(c)}})}sendRead(contacts.find(x=>x.id===curId))}});
 function updMemUI(){const c=contacts.find(x=>x.id===curId);if(!c||!c.room){$('memBtn').style.display='none';return}$('memBtn').style.display='inline-block';const list=members[c.id]||{},active=Object.entries(list);$('memBtn').textContent='👥 '+Math.max(1,active.length);$('memList').innerHTML=active.length?active.map(([k,v])=>`<div class="mem-row"><span style="font-size:1.4rem">${v.a}</span><b>${esc(v.n)}</b>${k===myUid?' <span style="color:var(--acc);font-size:.75rem">(ты)</span>':''}</div>`).join(''):'<div style="color:var(--mut)">Пока никого нет</div>'}
 $('memBtn').onclick=()=>{updMemUI();$('memModal').classList.add('show')};
 $('closeMem').onclick=()=>$('memModal').classList.remove('show');
@@ -109,14 +110,14 @@ function send(imgData){
   (hist[curId]=hist[curId]||[]).push(msgObj);$('msgIn').value='';cancelReply();save();renderMsgs();renderList();
   if(c&&c.room&&mq){
     const k=c.id, et=crypt(t,k), eq=crypt(q,k), ei=crypt(imgData||'',k);
-    if(ei){const cid=Date.now()+'_'+Math.random().toString(36).slice(2,6),sz=3500,tot=Math.ceil(ei.length/sz);for(let i=0;i<tot;i++)mq.publish(c.room,JSON.stringify({u:myUid,un:acc?acc.name:'Гость',ua:acc?acc.ava:'👤',s:sender,t:i===0?et:'',q:i===0?eq:'',cid,idx:i,tot,d:ei.slice(i*sz,(i+1)*sz)}));return}
+    if(ei){const cid=Date.now()+'_'+Math.random().toString(36).slice(2,6),sz=3000,tot=Math.ceil(ei.length/sz);for(let i=0;i<tot;i++)mq.publish(c.room,JSON.stringify({u:myUid,un:acc?acc.name:'Гость',ua:acc?acc.ava:'👤',s:sender,t:i===0?et:'',q:i===0?eq:'',cid,idx:i,tot,d:ei.slice(i*sz,(i+1)*sz)}));return}
     mq.publish(c.room,JSON.stringify({u:myUid,un:acc?acc.name:'Гость',ua:acc?acc.ava:'👤',s:sender,t:et,q:eq}));return;
   }
   if(c&&c.bot){$('hStat').textContent='печатает...';setTimeout(()=>{msgObj.rd=true;const r=imgData?'Ого, крутая фотка! 🔥':(curId==='cat'?'Мяу! 🐾':['Звучит мощно! 🚀','В твоём стиле! 💯','Интересно 👀'][Math.floor(Math.random()*3)]);hist[curId].push({t:r,type:'in',time:now()});$('hStat').textContent='● в сети';save();renderMsgs();renderList()},700)}
 }
 
 $('imgBtn').onclick=()=>$('imgIn').click();
-$('imgIn').onchange=e=>{const f=e.target.files.at(0);if(!f)return;const r=new FileReader();r.onload=ev=>{const im=new Image();im.onload=()=>{const cv=document.createElement('canvas'),max=320,sc=Math.min(1,max/Math.max(im.width,im.height));cv.width=im.width*sc;cv.height=im.height*sc;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);send(cv.toDataURL('image/jpeg',0.55))};im.src=ev.target.result};r.readAsDataURL(f);e.target.value=''};
+$('imgIn').onchange=e=>{const f=e.target.files.at(0);if(!f)return;const r=new FileReader();r.onload=ev=>{const im=new Image();im.onload=()=>{const cv=document.createElement('canvas'),max=240,sc=Math.min(1,max/Math.max(im.width,im.height));cv.width=im.width*sc;cv.height=im.height*sc;cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);send(cv.toDataURL('image/jpeg',0.45))};im.src=ev.target.result};r.readAsDataURL(f);e.target.value=''};
 
 $('pBar').onclick=$('openP').onclick=()=>{const n=prompt('Имя Персоны для ролки (пусто = писать от своего аккаунта):',persona.name);if(n===null)return;persona={name:n.trim(),desc:''};save();updAccUI()};
 $('openOn').onclick=()=>{const r=prompt('Код новой группы/комнаты (одинаковый с друзьями):');if(!r)return;const code=r.trim().toLowerCase(), id='rm_'+code, topic='neonchat/live/'+code;if(!contacts.find(x=>x.id===id))contacts.unshift({id,name:'🌐 '+r.trim(),ava:'🔥',room:topic,bot:false,def:false});hist[id]=hist[id]||[];if(mq&&onlineOk){mq.subscribe(topic);pingRoom(contacts.find(x=>x.id===id))}save();sw(id)};
@@ -125,7 +126,7 @@ window.pickA=(el,a)=>{document.querySelectorAll('#avGrid .av-opt').forEach(x=>x.
 $('openM').onclick=()=>{$('newName').value='';$('modal').classList.add('show');$('newName').focus()};
 $('closeM').onclick=()=>$('modal').classList.remove('show');
 $('addBtn').onclick=()=>{const name=$('newName').value.trim();if(!name)return;const id='c_'+Date.now(),bot=$('botChk').checked;contacts.unshift({id,name,ava:selAva,bot,def:false});hist[id]=bot?[{t:`Привет! Я ${name} 👋`,type:'in',time:now()}]:[];save();$('modal').classList.remove('show');sw(id)};
-$('delBtn').onclick=()=>{if(!confirm('Выйти из этого чата и удалить его?'))return;contacts=contacts.filter(x=>x.id!==curId);delete hist[curId];save();sw(contacts.at(0).id)};
+$('delBtn').onclick=()=>{if(!confirm('Выйти из этого чата и удалить его?'))return;contacts=contacts.filter(x=>x.id!==curId);delete hist[curId];delete members[curId];save();sw(contacts.at(0).id)};
 $('emBox').innerHTML=ems.map(e=>`<span class="em" onclick="$('msgIn').value+='${e}'">${e}</span>`).join('');
 $('emBtn').onclick=e=>{e.stopPropagation();$('emBox').classList.toggle('show')};document.onclick=()=>$('emBox').classList.remove('show');
 $('themeBtn').onclick=()=>document.body.classList.toggle('light');
