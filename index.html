@@ -48,18 +48,37 @@ body{background:var(--bg);color:var(--txt);height:100vh;display:flex;justify-con
 <script>
 const $ = id => document.getElementById(id);
 $('app').outerHTML = `<div class="app"><div class="sidebar"><div class="s-head"><div class="logo">⚡ NeonChat</div><div style="display:flex;gap:4px"><button class="sq-btn plus-btn" id="openM">+</button><button class="sq-btn" id="openP">🎭</button><button class="sq-btn" id="openOn">🌐</button><button class="sq-btn" id="themeBtn">🌓</button></div></div><div id="pBar" style="padding:8px 14px;font-size:.78rem;background:rgba(139,92,246,.15);border-bottom:1px solid var(--brd);cursor:pointer">🎭 Роль: <b id="pName">Ты</b></div><div class="c-list" id="cList"></div></div><div class="main"><div class="m-head"><div style="display:flex;align-items:center"><div class="ava" id="hAva">🤖</div><div><b id="hName">Бот</b><div style="font-size:.75rem;color:#10b981" id="hStat">● в сети</div></div></div><div><button class="d-btn" id="clrBtn">Очистить</button> <button class="d-btn" id="delBtn" style="display:none">Удалить</button></div></div><div class="msgs" id="msgs"></div><div class="inp-box"><div class="emojis" id="emBox"></div><button class="sq-btn" style="border:none" id="emBtn">😊</button><input id="msgIn" placeholder="Сообщение..."><button class="send" id="sendBtn">➤</button></div></div><div class="modal" id="modal"><div class="m-box"><h3>✨ Новый чат</h3><input class="m-inp" id="newName" placeholder="Имя бота"><div class="avas" id="avGrid"></div><label style="font-size:.85rem"><input type="checkbox" id="botChk" checked> Бот отвечает</label><div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px"><button class="sq-btn" style="width:auto;padding:0 12px" id="closeM">Отмена</button><button class="send" id="addBtn">Создать</button></div></div></div></div>`;
-<script src="htfunction updP(){$('pName').textContent=persona.name?persona.name+(persona.desc?' ('+persona.desc.slice(0,15)+'...)':''):'Ты (без роли)'}
+let mq=null, onlineOk=false;
+const sEl=document.createElement('script');
+sEl.src = ['https:/', 'unpkg.com', 'mqtt', 'dist', 'mqtt.min.js'].join('/');
+sEl.onload=()=>{
+  mq=mqtt.connect('wss://'+'broker.emqx.io:8084/mqtt');
+  mq.on('connect',()=>{onlineOk=true;contacts.forEach(c=>{if(c.room)mq.subscribe(c.room)});if(curId.startsWith('rm_'))$('hStat').textContent='● онлайн (подключено)'});
+  mq.on('message',(topic,payload)=>{try{const m=JSON.parse(payload.toString()),c=contacts.find(x=>x.room===topic);if(c&&m.u!==myUid){(hist[c.id]=hist[c.id]||[]).push({t:m.t,role:m.s,type:'in',time:now()});save();if(curId===c.id)renderMsgs();renderList()}}catch(e){}});
+};
+document.head.appendChild(sEl);
+
+const myUid=localStorage.getItem('nc_uid')||('u_'+Math.random().toString(36).slice(2));
+localStorage.setItem('nc_uid',myUid);
+const defC=[{id:'bot',name:'Кибер-Бот',ava:'🤖',bot:true,def:true},{id:'cat',name:'Кот Батон',ava:'🐱',bot:true,def:true},{id:'fav',name:'Избранное',ava:'📌',bot:false,def:true}];
+const avas=['😎','👽','🦊','🚀','💎','🎮','👻','🧠','🔥','👑'], ems=['😂','🔥','❤️','👍','😎','🚀','🎉','🤔','👀','✨','💯','🐱'];
+const now=()=>new Date().toTimeString().slice(0,5);
+let contacts=JSON.parse(localStorage.getItem('nc9_c'))||defC, hist=JSON.parse(localStorage.getItem('nc9_h'))||{bot:[{t:'Привет! Жми 🌐 для чата с другом или 🎭 для персоны! 🚀',type:'in',time:now()}],cat:[{t:'Мяу! 🐟',type:'in',time:now()}],fav:[]}, persona=JSON.parse(localStorage.getItem('nc9_p'))||{name:'',desc:''};
+let curId=contacts.at(0).id, selAva=avas.at(0);
+const save=()=>{localStorage.setItem('nc9_c',JSON.stringify(contacts));localStorage.setItem('nc9_h',JSON.stringify(hist));localStorage.setItem('nc9_p',JSON.stringify(persona))};
+const esc=s=>{const d=document.createElement('div');d.textContent=s;return d.innerHTML};
+function updP(){$('pName').textContent=persona.name?persona.name+(persona.desc?' ('+persona.desc.slice(0,15)+'...)':''):'Ты (без роли)'}
 function renderList(){$('cList').innerHTML=contacts.map(c=>{const m=hist[c.id]||[],last=m.length?esc(m.at(-1).t):'Нет сообщений';return`<div class="c-item ${c.id===curId?'active':''}" onclick="sw('${c.id}')"><div class="ava">${c.ava}</div><div><b>${esc(c.name)}</b><div class="c-prev">${last}</div></div></div>`}).join('')}
 window.sw=id=>{curId=id;const c=contacts.find(x=>x.id===id);if(!c)return;$('hName').textContent=c.name;$('hAva').textContent=c.ava;$('hStat').textContent=c.room?(onlineOk?'● онлайн (подключено)':'⏳ подключение...'):(c.bot?'● в сети':'● заметки');$('delBtn').style.display=c.def?'none':'inline-block';renderList();renderMsgs()};
 function renderMsgs(){$('msgs').innerHTML=(hist[curId]||[]).map(m=>`<div class="msg ${m.type}">${m.role?`<div style="font-size:.7rem;opacity:.8;margin-bottom:3px">🎭 ${esc(m.role)}</div>`:''}${esc(m.t)}<div class="time">${m.time}</div></div>`).join('');$('msgs').scrollTop=$('msgs').scrollHeight}
 function send(){
   const t=$('msgIn').value.trim();if(!t)return;const role=persona.name||'', c=contacts.find(x=>x.id===curId);
   (hist[curId]=hist[curId]||[]).push({t,type:'out',time:now(),role});$('msgIn').value='';save();renderMsgs();renderList();
-  if(c&&c.room){mq.publish(c.room,JSON.stringify({u:myUid,s:role||'Друг',t}));return}
+  if(c&&c.room&&mq){mq.publish(c.room,JSON.stringify({u:myUid,s:role||'Друг',t}));return}
   if(c&&c.bot){$('hStat').textContent='печатает...';setTimeout(()=>{const p=persona.name?persona.name+', ':'';const r=curId==='cat'?['Мяу! 🐾','Мур-мур...','Дай колбасы! 🌭'].at(Math.floor(Math.random()*3)):[`${p}звучит эпично! 🔥`,`${p}интересный поворот 👀`,`В твоём стиле! 💯`,`Продолжай, ${persona.name||'друг'}! ✨`].at(Math.floor(Math.random()*4));hist[curId].push({t:r,type:'in',time:now()});$('hStat').textContent='● в сети';save();renderMsgs();renderList()},700)}
 }
 $('openP').onclick=$('pBar').onclick=()=>{const n=prompt('Имя твоей Персоны (пусто = сброс):',persona.name);if(n===null)return;const d=n.trim()?prompt('Описание роли:',persona.desc):'';persona={name:n.trim(),desc:(d||'').trim()};save();updP()};
-$('openOn').onclick=()=>{const r=prompt('Код новой комнаты (одинаковый с другом):');if(!r)return;const code=r.trim().toLowerCase(), id='rm_'+code, topic='neonchat/live/'+code;if(!contacts.find(x=>x.id===id))contacts.unshift({id,name:'🌐 '+r.trim(),ava:'🔥',room:topic,bot:false,def:false});hist[id]=hist[id]||[];if(onlineOk)mq.subscribe(topic);save();sw(id)};
+$('openOn').onclick=()=>{const r=prompt('Код новой комнаты (одинаковый с другом):');if(!r)return;const code=r.trim().toLowerCase(), id='rm_'+code, topic='neonchat/live/'+code;if(!contacts.find(x=>x.id===id))contacts.unshift({id,name:'🌐 '+r.trim(),ava:'🔥',room:topic,bot:false,def:false});hist[id]=hist[id]||[];if(mq&&onlineOk)mq.subscribe(topic);save();sw(id)};
 $('avGrid').innerHTML=avas.map((a,i)=>`<div class="av-opt ${i===0?'sel':''}" onclick="pickA(this,'${a}')">${a}</div>`).join('');
 window.pickA=(el,a)=>{document.querySelectorAll('.av-opt').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');selAva=a};
 $('openM').onclick=()=>{$('newName').value='';$('modal').classList.add('show');$('newName').focus()};
